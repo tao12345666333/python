@@ -12,6 +12,10 @@ ENV PYTHONIOENCODING UTF-8
 # runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		ca-certificates \
+		libgdbm3 \
+		libreadline6 \
+		libsqlite3-0 \
+		libssl1.0.0 \
 		netbase \
 	&& rm -rf /var/lib/apt/lists/*
 
@@ -19,9 +23,7 @@ ENV GPG_KEY C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF
 ENV PYTHON_VERSION 2.7.15
 
 RUN set -ex \
-	\
-	&& savedAptMark="$(apt-mark showmanual)" \
-	&& apt-get update && apt-get install -y --no-install-recommends \
+	&& buildDeps=" \
 		dpkg-dev \
 		gcc \
 		libbz2-dev \
@@ -33,13 +35,15 @@ RUN set -ex \
 		libsqlite3-dev \
 		libssl-dev \
 		make \
+		tcl-dev \
 		tk-dev \
 		wget \
 		xz-utils \
 		zlib1g-dev \
 # as of Stretch, "gpg" is no longer included by default
 		$(command -v gpg > /dev/null || echo 'gnupg dirmngr') \
-	&& rm -rf /var/lib/apt/lists/* \
+	" \
+	&& apt-get update && apt-get install -y $buildDeps --no-install-recommends && rm -rf /var/lib/apt/lists/* \
 	\
 	&& wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" \
 	&& wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
@@ -61,16 +65,7 @@ RUN set -ex \
 	&& make install \
 	&& ldconfig \
 	\
-	&& apt-mark auto '.*' > /dev/null \
-	&& apt-mark manual $savedAptMark \
-	&& find /usr/local -type f -executable -not \( -name '*tkinter*' \) -exec ldd '{}' ';' \
-		| awk '/=>/ { print $(NF-1) }' \
-		| sort -u \
-		| xargs -r dpkg-query --search \
-		| cut -d: -f1 \
-		| sort -u \
-		| xargs -r apt-mark manual \
-	&& apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+	&& apt-get purge -y --auto-remove $buildDeps \
 	\
 	&& find /usr/local -depth \
 		\( \
@@ -78,25 +73,20 @@ RUN set -ex \
 			-o \
 			\( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
 		\) -exec rm -rf '{}' + \
-	&& rm -rf /usr/src/python \
-	\
-	&& python2 --version
+	&& rm -rf /usr/src/python
 
 # if this is called "PIP_VERSION", pip explodes with "ValueError: invalid truth value '<VERSION>'"
-ENV PYTHON_PIP_VERSION 18.0
+ENV PYTHON_PIP_VERSION 10.0.1
 
 RUN set -ex; \
 	\
-	savedAptMark="$(apt-mark showmanual)"; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends wget; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
 	wget -O get-pip.py 'https://bootstrap.pypa.io/get-pip.py'; \
 	\
-	apt-mark auto '.*' > /dev/null; \
-	[ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; \
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+	apt-get purge -y --auto-remove wget; \
 	\
 	python get-pip.py \
 		--disable-pip-version-check \
