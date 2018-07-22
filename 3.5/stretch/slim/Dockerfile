@@ -19,8 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 		netbase \
 	&& rm -rf /var/lib/apt/lists/*
 
-ENV GPG_KEY 0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D
-ENV PYTHON_VERSION 3.6.6
+ENV GPG_KEY 97FC712E4C024BBEA48A61ED3A5CA953F73C700D
+ENV PYTHON_VERSION 3.5.5
 
 RUN set -ex \
 	\
